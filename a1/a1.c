@@ -6,17 +6,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <dirent.h>
-/*
-int check_file_size(off_t _size_greater, const char* path){
-    int fd = open(name, O_RDONLY);
-    if(fd == -1){
-        return -1;
-    }
-
-    off_t size = lseek(fd, 0, SEEK_END);
-    close(fd);
-    return (size == _size_greater);
-}*/
 
 void list_recursive(const char* path, off_t _size_greater) {
     DIR *dir = NULL;
@@ -84,8 +73,8 @@ void list_simple(const char* path, off_t _size_greater) {
         while ((entry = readdir(dir)) != NULL) {
             if (strcmp(entry->d_name, ".") != 0 &&
                     strcmp(entry->d_name, "..") != 0) {
-                if (lstat(file, &statbuf) == 0) {
                     snprintf(file, 1024, "%s/%s", path, entry->d_name);
+                if (lstat(file, &statbuf) == 0) {
                     if (S_ISREG(statbuf.st_mode) &&
                             statbuf.st_size > _size_greater) {
                         printf("%s\n", file);
