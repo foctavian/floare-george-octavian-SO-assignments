@@ -7,7 +7,12 @@
 #include <fcntl.h>
 #include <dirent.h>
 
-void list_recursive(const char* path, off_t _size_greater) {
+int starts_with(char* input, char* prefix) {
+
+    return strncmp(prefix, input, strlen(prefix));
+}
+
+void list_recursive(const char* path, off_t _size_greater, char* name_starts_with) {
     DIR *dir = NULL;
     struct dirent *entry = NULL;
     char fullPath[4096];
@@ -18,20 +23,37 @@ void list_recursive(const char* path, off_t _size_greater) {
         perror("ERROR\ninvalid directory path\n");
         return;
     }
-    if (_size_greater == -1) {
+
+    //regular listing with not additional filters
+    if (_size_greater == -1 && name_starts_with == NULL) {
         while ((entry = readdir(dir)) != NULL) {
             if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
                 snprintf(fullPath, 4096, "%s/%s", path, entry->d_name);
                 if (lstat(fullPath, &statbuf) == 0) {
                     printf("%s\n", fullPath);
                     if (S_ISDIR(statbuf.st_mode)) {
-                        list_recursive(fullPath, _size_greater);
+                        list_recursive(fullPath, _size_greater, name_starts_with);
                     }
                 }
             }
         }
     }
-    else {
+    else if (_size_greater == -1 && name_starts_with != NULL) {
+        while ((entry = readdir(dir)) != NULL) {
+            if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+                if (starts_with(entry->d_name, name_starts_with) == 0) {
+                    snprintf(fullPath, 4096, "%s/%s", path, entry->d_name);
+                    if (lstat(fullPath, &statbuf) == 0) {
+                        printf("%s\n", fullPath);
+                        if (S_ISDIR(statbuf.st_mode)) {
+                            list_recursive(fullPath, _size_greater, name_starts_with);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else if(_size_greater != -1 && name_starts_with == NULL){
         while ((entry = readdir(dir)) != NULL) {
             if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
                 snprintf(fullPath, 4096, "%s/%s", path, entry->d_name);
@@ -41,7 +63,7 @@ void list_recursive(const char* path, off_t _size_greater) {
                         printf("%s\n", fullPath);
                     }
                     if (S_ISDIR(statbuf.st_mode)) {
-                        list_recursive(fullPath, _size_greater);
+                        list_recursive(fullPath, _size_greater, name_starts_with);
                     }
                 }
             }
@@ -50,7 +72,7 @@ void list_recursive(const char* path, off_t _size_greater) {
     closedir(dir);
 }
 
-void list_simple(const char* path, off_t _size_greater) {
+void list_simple(const char* path, off_t _size_greater, char* name_starts_with) {
     DIR* dir = NULL;
     struct dirent *entry = NULL;
     char file[1024];
@@ -60,7 +82,7 @@ void list_simple(const char* path, off_t _size_greater) {
         perror("ERROR\ninvalid directory path\n");
         return;
     }
-    if (_size_greater == -1) {
+    if (_size_greater == -1 && name_starts_with == NULL) {
         while ((entry = readdir(dir)) != NULL) {
             if (strcmp(entry->d_name, ".") != 0 &&
                     strcmp(entry->d_name, "..") != 0) {
@@ -69,11 +91,19 @@ void list_simple(const char* path, off_t _size_greater) {
             }
         }
         closedir(dir);
-    } else {
+    } else if (_size_greater == -1 && name_starts_with != NULL) {
+        while ((entry = readdir(dir)) != NULL) {
+            if (starts_with(entry->d_name, name_starts_with) == 0) {
+                snprintf(file, 1024, "%s/%s", path, entry->d_name);
+                printf("%s\n", file);
+            }
+        }
+    }
+    else if(_size_greater != -1 && name_starts_with == NULL){
         while ((entry = readdir(dir)) != NULL) {
             if (strcmp(entry->d_name, ".") != 0 &&
                     strcmp(entry->d_name, "..") != 0) {
-                    snprintf(file, 1024, "%s/%s", path, entry->d_name);
+                snprintf(file, 1024, "%s/%s", path, entry->d_name);
                 if (lstat(file, &statbuf) == 0) {
                     if (S_ISREG(statbuf.st_mode) &&
                             statbuf.st_size > _size_greater) {
@@ -137,12 +167,13 @@ int main(int argc, char **argv) {
 
     if (_list == 1 && _recursive == 1) {
         printf("SUCCESS\n");
-        list_recursive(path, _size_greater);
+        list_recursive(path, _size_greater, name_starts_with);
     }
     else if (_list == 1 && _recursive == 0) {
         printf("SUCCESS\n");
-        list_simple(path, _size_greater);
+        list_simple(path, _size_greater, name_starts_with);
     }
+
 
 
     free(path);
