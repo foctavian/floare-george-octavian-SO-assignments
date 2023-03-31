@@ -119,7 +119,9 @@ void list_simple(const char* path, off_t _size_greater, char* name_starts_with) 
     }
 }
 
-void parse(const char* path) {
+
+//TO BE REFACTORED
+int parse(const char* path) {
     int _version = 0;
     char _magic = 0;
     int _sect_nr = 0;
@@ -127,7 +129,7 @@ void parse(const char* path) {
     int fd = open(path, O_RDONLY);
     if (fd == -1) {
         perror("ERROR\ncouldn't open file");
-        return;
+        return -1;
     }
 
     //move to the end of the file
@@ -135,8 +137,7 @@ void parse(const char* path) {
 
     //error flag vector for
     //every entry of the header
-    int error[5];
-    error[4] = 0;
+    int error = 0;
     //move the cursor a specific number of bytes
     //to find the characteristics of the SF
 
@@ -144,8 +145,8 @@ void parse(const char* path) {
     lseek(fd, -1, SEEK_CUR);
     read(fd, &_magic, 1);
     if (_magic != 'D') {
-        error[MAGIC] = -1;
-        error[4] = -1;
+        printf("ERROR\nwrong magic");
+        error = 1;
     }
 
     //read header_size
@@ -157,17 +158,20 @@ void parse(const char* path) {
     lseek(fd, -_header_size, SEEK_END);
     read(fd, &_version, 2);
     if (_version < 97 && _version > 195) {
-        error[VERSION] = -1;
-        error[4] = -1;
+        if (error == 0) {
+            printf("ERROR\nwrong version");
+            error = 1;
+        }
     }
     read(fd, &_sect_nr, 1);
     if (_sect_nr < 6 && _sect_nr > 16) {
-        error[SECT_NR] = -1;
-        _sect_nr = -1;
-        error[4] = -1;
+        if (error == 0) {
+            printf("ERROR\nwrong sect_nr");
+            error = 1;
+        }
     }
 
-  
+
     char sect_name[_sect_nr][8];
     char sect_type[_sect_nr];
     int sect_offset[_sect_nr];
@@ -183,9 +187,11 @@ void parse(const char* path) {
                     sect_type[i] != 66 &&
                     sect_type[i] != 27 &&
                     sect_type[i] != 70) {
-                error[SECT_TYPES] = -1;
-                error[4] = -1;
-                break;
+                if (error == 0) {
+                    printf("ERROR\nwrong sect_types");
+                    error = 1;
+                    break;
+                }
             }
             read(fd, &sect_offset[i], 4);
             read(fd, &sect_size[i], 4);
@@ -195,8 +201,7 @@ void parse(const char* path) {
 
 
     //validation
-    int pos = -1;
-    if (error[4] == 0) {
+    if (error == 0) {
         printf("SUCCESS\n");
         printf("version=%d\n", _version);
         printf("nr_sections=%d\n", _sect_nr);
@@ -205,8 +210,9 @@ void parse(const char* path) {
             printf("section%d: %s %d %d\n", i + 1, sect_name[i], sect_type[i], sect_size[i]);
         }
         printf("\n");
+        return 0;
     }
-    else {
+    /*else {
         for (int i = 0; i < 4; i++) {
             if (error[i] == -1) {
                 if (i == MAGIC) {
@@ -254,10 +260,14 @@ void parse(const char* path) {
             }
         }
     }
-    printf("\n");
+    printf("\n");*/
 
 
-    return;
+    return -1;
+}
+
+void extract(const char* path, int sectiion, int line) {
+
 }
 
 int main(int argc, char **argv) {
@@ -265,6 +275,9 @@ int main(int argc, char **argv) {
     int _list = 0;
     int _recursive = 0;
     int _parse = 0;
+    int _extract = 0;
+    int _section = 0;
+    int _line = 0;
     off_t _size_greater = -1;
     char *name_starts_with = NULL;
     char *path = NULL;
@@ -285,6 +298,9 @@ int main(int argc, char **argv) {
                 if (strcmp(argv[i], "parse") == 0) {
                     _parse = 1;
                 }
+                if (strcmp(argv[i], "extract") == 0) {
+                    _extract = 1;
+                }
                 else {
                     char* token = strtok(argv[i], "=");
                     if (strcmp(token, "path") == 0) {
@@ -296,7 +312,16 @@ int main(int argc, char **argv) {
                         }
                         strncpy(path, token, strlen(token) + 1);
                     }
+                    if (strcmp(token, "section") == 0) {
+                        token = strtok(NULL, "=");
+                        _section = atoi(token);
+                    }
+                    if (strcmp(token, "line") == 0) {
+                        token = strtok(NULL, "=");
+                        _line = atoi(token);
+                    }
                     if (strcmp(token, "size_greater") == 0) {
+
                         token = strtok(NULL, "=");
                         char** endptr = NULL;
                         _size_greater = strtoll(token, endptr, 10);
@@ -324,6 +349,11 @@ int main(int argc, char **argv) {
     }
     else if (_parse == 1) {
         parse(path);
+    }
+    else if (_extract == 1) {
+        if (_line != 0 && _section != 0) {
+
+        }
     }
     free(path);
     free(name_starts_with);
