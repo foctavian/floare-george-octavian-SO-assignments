@@ -7,10 +7,6 @@
 #include <fcntl.h>
 #include <dirent.h>
 
-enum flags {
-    MAGIC, VERSION, SECT_NR, SECT_TYPES
-};
-
 int starts_with(char* input, char* prefix) {
 
     return strncmp(prefix, input, strlen(prefix));
@@ -122,13 +118,14 @@ void list_simple(const char* path, off_t _size_greater, char* name_starts_with) 
 
 //TO BE REFACTORED
 int parse(const char* path) {
-    int _version = 0;
+    short _version = 0;
     char _magic = 0;
-    int _sect_nr = 0;
-    int _header_size = 0;
+    char _sect_nr = 0;
+    short _header_size = 0;
+
     int fd = open(path, O_RDONLY);
     if (fd == -1) {
-        perror("ERROR\ncouldn't open file");
+        perror("ERROR\ncouldn't open file\n");
         return -1;
     }
 
@@ -145,7 +142,7 @@ int parse(const char* path) {
     lseek(fd, -1, SEEK_CUR);
     read(fd, &_magic, 1);
     if (_magic != 'D') {
-        printf("ERROR\nwrong magic");
+        printf("ERROR\nwrong magic\n");
         error = 1;
     }
 
@@ -157,29 +154,36 @@ int parse(const char* path) {
     //read version
     lseek(fd, -_header_size, SEEK_END);
     read(fd, &_version, 2);
-    if (_version < 97 && _version > 195) {
+    if (_version < 97 || _version > 195) {
         if (error == 0) {
-            printf("ERROR\nwrong version");
+            printf("ERROR\nwrong version\n");
             error = 1;
         }
     }
     read(fd, &_sect_nr, 1);
-    if (_sect_nr < 6 && _sect_nr > 16) {
+    if (_sect_nr < 6 || _sect_nr > 16) {
         if (error == 0) {
-            printf("ERROR\nwrong sect_nr");
+            printf("ERROR\nwrong sect_nr\n");
             error = 1;
         }
     }
 
+    /*int sect_headers = 0;
+    read(fd, &sect_headers, 2);
+    printf("%d\n", sect_headers);*/
 
+    //0 1 2 3 4 5 6 7 <- "\0"
     char sect_name[_sect_nr][8];
     char sect_type[_sect_nr];
     int sect_offset[_sect_nr];
     int sect_size[_sect_nr];
+    //read the name char by char to not read 
+    // a /n accidentally
     if (_sect_nr != -1 && _version != -1 && _magic != -1) {
         for (int i = 0; i < _sect_nr; i++) {
             read(fd, &sect_name[i], 7);
             sect_name[i][7] = '\0';
+        
             read(fd, &sect_type[i], 1);
             if ( sect_type[i] != 78 &&
                     sect_type[i] != 17 &&
@@ -188,7 +192,7 @@ int parse(const char* path) {
                     sect_type[i] != 27 &&
                     sect_type[i] != 70) {
                 if (error == 0) {
-                    printf("ERROR\nwrong sect_types");
+                    printf("ERROR\nwrong sect_types\n");
                     error = 1;
                     break;
                 }
@@ -199,8 +203,6 @@ int parse(const char* path) {
         }
     }
 
-
-    //validation
     if (error == 0) {
         printf("SUCCESS\n");
         printf("version=%d\n", _version);
@@ -212,57 +214,7 @@ int parse(const char* path) {
         printf("\n");
         return 0;
     }
-    /*else {
-        for (int i = 0; i < 4; i++) {
-            if (error[i] == -1) {
-                if (i == MAGIC) {
-                    printf("wrong magic");
-                    pos = i;
-                    break;
-                } else if (i == VERSION) {
-                    printf("|wrong version");
-                    pos = i;
-                    break;
-                } else if (i == SECT_NR) {
-                    printf("|wrong sect_nr");
-                    pos = i;
-                    break;
-                } else if (i == SECT_TYPES) {
-                    printf("|wrong sect_types");
-                    pos = i;
-                    break;
-                }
-            }
-            else {
-                if (i == MAGIC) {
-                    printf("magic");
-                } else if (i == VERSION) {
-                    printf("|version");
-                } else if (i == SECT_NR) {
-                    printf("|sect_nr");
-                } else if (i == SECT_TYPES) {
-                    printf("|sect_types");
-                }
-            }
-        }
-    }
-
-    if (pos != -1 && pos != 3) {
-        for (int i = pos + 1; i < 4; i++) {
-            if (i == MAGIC) {
-                printf("magic");
-            } else if (i == VERSION) {
-                printf("|version");
-            } else if (i == SECT_NR) {
-                printf("|sect_nr");
-            } else if (i == SECT_TYPES) {
-                printf("|sect_types");
-            }
-        }
-    }
-    printf("\n");*/
-
-
+    
     return -1;
 }
 
