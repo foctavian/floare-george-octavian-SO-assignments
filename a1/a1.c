@@ -7,7 +7,10 @@
 #include <fcntl.h>
 #include <dirent.h>
 
+#define SIZE 1362
+
 int parse_flag = 0;
+int flag = 0;
 
 int starts_with(char* input, char* prefix) {
 
@@ -210,7 +213,7 @@ int parse(const char* path) {
         }
     }
     close(fd);
-    if(parse_flag == 1 && error == 0){
+    if (parse_flag == 1 && error == 0) {
         return 0;
     }
 
@@ -317,7 +320,7 @@ void extract(const char* path, int section, int line) {
             }
             i++;
 
-            if (i == initial_size-1) {
+            if (i == initial_size - 1) {
                 initial_size *= 2;
                 buffer = realloc(buffer, initial_size);
                 if (buffer == NULL) return;
@@ -325,7 +328,7 @@ void extract(const char* path, int section, int line) {
         }
         close(fd);
         printf("SUCCESS\n");
-        for (int j = strlen(buffer)-1; j >= 0; j--) {
+        for (int j = strlen(buffer) - 1; j >= 0; j--) {
             printf("%c", buffer[j]);
         }
         printf("\n");
@@ -336,6 +339,69 @@ void extract(const char* path, int section, int line) {
 
 }
 
+void findall(const char* path) {
+    DIR *dir = NULL;
+    struct dirent *entry = NULL;
+    char fullPath[4096];
+    struct stat statbuf;
+
+    dir = opendir(path);
+    if (dir == NULL) {
+        perror("ERROR\ninvalid directory path\n");
+        return;
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") != 0
+                && strcmp(entry->d_name, "..") != 0) {
+            snprintf(fullPath, 4096, "%s/%s", path, entry->d_name);
+            if (lstat(fullPath, &statbuf) == 0) {
+                if (S_ISREG(statbuf.st_mode)) {
+                    //check every SF size
+                    int fd = open(fullPath, O_RDONLY);
+                    if (fd == -1) {
+                        perror("ERROR\ninvalid directory path\n");
+                        return;
+                    }
+
+                    //go through the header and read the size
+                    if (parse(fullPath) == 0) {
+                        char size_flag = 0;
+                        //read the nr of sections
+                        lseek(fd, 0 , SEEK_END);
+                        lseek(fd, -3, SEEK_CUR);
+                        int header_size = 0;
+                        read(fd, &header_size, 2);
+
+                        //jump to the beginning of the header, after version
+                        lseek(fd, 0, SEEK_END);
+                        lseek(fd, -header_size + 2, SEEK_CUR);
+                        int sect_nr = 0;
+                        read(fd, &sect_nr, 1);
+                        int temp_size = 0;
+                        for (int i = 0; i < sect_nr; i++) {
+                            lseek(fd, 12, SEEK_CUR);
+                            read(fd, &temp_size, 4);
+                            if (temp_size > SIZE) {
+                                size_flag = 1;
+                            }
+                        }
+
+                        if (size_flag == 0) {
+                            printf("%s\n", fullPath);
+                        }
+                    }
+                    close(fd);
+                }
+                else if (S_ISDIR(statbuf.st_mode)) {
+                    findall(fullPath);
+                }
+            }
+        }
+    }
+    closedir(dir);
+}
+
 int main(int argc, char **argv) {
 
     int _list = 0;
@@ -344,6 +410,7 @@ int main(int argc, char **argv) {
     int _extract = 0;
     int _section = 0;
     int _line = 0;
+    int _findall = 0;
     off_t _size_greater = -1;
     char *name_starts_with = NULL;
     char *path = NULL;
@@ -366,6 +433,9 @@ int main(int argc, char **argv) {
                 }
                 if (strcmp(argv[i], "extract") == 0) {
                     _extract = 1;
+                }
+                if (strcmp(argv[i], "findall") == 0) {
+                    _findall = 1;
                 }
                 else {
                     char* token = strtok(argv[i], "=");
@@ -422,6 +492,12 @@ int main(int argc, char **argv) {
             parse_flag = 1;
             extract(path, _section, _line);
         }
+    }
+    else if (_findall == 1) {
+        parse_flag = 1;
+        printf("SUCCESS\n");
+        findall(path);
+        parse_flag = 0;
     }
     free(path);
     free(name_starts_with);
