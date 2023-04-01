@@ -98,6 +98,7 @@ void list_simple(const char* path, off_t _size_greater, char* name_starts_with) 
                 printf("%s\n", file);
             }
         }
+        closedir(dir);
     }
     else if (_size_greater != -1 && name_starts_with == NULL) {
         while ((entry = readdir(dir)) != NULL) {
@@ -112,11 +113,10 @@ void list_simple(const char* path, off_t _size_greater, char* name_starts_with) 
                 }
             }
         }
+        closedir(dir);
     }
 }
 
-
-//TO BE REFACTORED
 int parse(const char* path) {
     short _version = 0;
     char _magic = 0;
@@ -168,17 +168,11 @@ int parse(const char* path) {
         }
     }
 
-    /*int sect_headers = 0;
-    read(fd, &sect_headers, 2);
-    printf("%d\n", sect_headers);*/
-
-    //0 1 2 3 4 5 6 7 <- "\0"
     char sect_name[_sect_nr][8];
     char sect_type[_sect_nr];
     int sect_offset[_sect_nr];
     int sect_size[_sect_nr];
-    //read the name char by char to not read 
-    // a /n accidentally
+  
     if (_sect_nr != -1 && _version != -1 && _magic != -1) {
         for (int i = 0; i < _sect_nr; i++) {
             read(fd, &sect_name[i], 7);
@@ -202,7 +196,7 @@ int parse(const char* path) {
 
         }
     }
-
+    close(fd);
     if (error == 0) {
         printf("SUCCESS\n");
         printf("version=%d\n", _version);
@@ -218,7 +212,54 @@ int parse(const char* path) {
     return -1;
 }
 
-void extract(const char* path, int sectiion, int line) {
+void extract(const char* path, int section, int line) {
+    int fd = open(path, O_RDONLY);
+
+    if(fd == -1){
+        perror("ERROR\ninvalid file");
+    }
+
+    if(parse(path) == 0){
+        //move to the header size
+        lseek(fd, -3, SEEK_END);
+        int _header_size = 0;
+        read(fd,&_header_size ,2);
+
+        //move after the version
+        lseek(fd, 0, SEEK_END);
+        lseek(fd, -_header_size+2, SEEK_END);
+
+        char _sect_nr = 0;
+
+        //read no of sections
+        read(fd, &_sect_nr, 1);
+
+        //char* line_feed;
+
+        int _sect_size = 0;
+        int _sect_offset = 0;
+        if(section > _sect_nr || section < 1){
+            perror("ERROR\ninvalid section");
+            return;
+        }
+
+        //jump to the section's header 
+        //in order to find its size
+        for(int i=0;i<section-1;i++){
+            lseek(fd, 16, SEEK_CUR);
+        }
+
+        //jump inside the header 
+        //to find section size and offset
+        lseek(fd, 8, SEEK_CUR);
+        read(fd, &_sect_offset, 4);
+        read(fd, &_sect_size, 4);
+
+    }
+    int a = 0;
+    if(a == 0){
+        a = 1;
+    }
 
 }
 
@@ -304,7 +345,7 @@ int main(int argc, char **argv) {
     }
     else if (_extract == 1) {
         if (_line != 0 && _section != 0) {
-
+            extract(path, _section, _line);
         }
     }
     free(path);
