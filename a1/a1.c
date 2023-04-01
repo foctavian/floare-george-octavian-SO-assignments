@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <dirent.h>
 
+int parse_flag = 0;
+
 int starts_with(char* input, char* prefix) {
 
     return strncmp(prefix, input, strlen(prefix));
@@ -142,8 +144,13 @@ int parse(const char* path) {
     lseek(fd, -1, SEEK_CUR);
     read(fd, &_magic, 1);
     if (_magic != 'D') {
-        printf("ERROR\nwrong magic\n");
-        error = 1;
+        if (parse_flag == 1) {
+            error = 1;
+        }
+        if (error == 0) {
+            printf("ERROR\nwrong magic\n");
+            error = 1;
+        }
     }
 
     //read header_size
@@ -162,6 +169,9 @@ int parse(const char* path) {
     }
     read(fd, &_sect_nr, 1);
     if (_sect_nr < 6 || _sect_nr > 16) {
+        if (parse_flag == 1) {
+            error = 1;
+        }
         if (error == 0) {
             printf("ERROR\nwrong sect_nr\n");
             error = 1;
@@ -172,12 +182,12 @@ int parse(const char* path) {
     char sect_type[_sect_nr];
     int sect_offset[_sect_nr];
     int sect_size[_sect_nr];
-  
+
     if (_sect_nr != -1 && _version != -1 && _magic != -1) {
         for (int i = 0; i < _sect_nr; i++) {
             read(fd, &sect_name[i], 7);
             sect_name[i][7] = '\0';
-        
+
             read(fd, &sect_type[i], 1);
             if ( sect_type[i] != 78 &&
                     sect_type[i] != 17 &&
@@ -185,6 +195,9 @@ int parse(const char* path) {
                     sect_type[i] != 66 &&
                     sect_type[i] != 27 &&
                     sect_type[i] != 70) {
+                if (parse_flag == 1) {
+                    error = 1;
+                }
                 if (error == 0) {
                     printf("ERROR\nwrong sect_types\n");
                     error = 1;
@@ -197,7 +210,11 @@ int parse(const char* path) {
         }
     }
     close(fd);
-    if (error == 0) {
+    if(parse_flag == 1 && error == 0){
+        return 0;
+    }
+
+    if (error == 0 && parse_flag == 0) {
         printf("SUCCESS\n");
         printf("version=%d\n", _version);
         printf("nr_sections=%d\n", _sect_nr);
@@ -208,26 +225,33 @@ int parse(const char* path) {
         printf("\n");
         return 0;
     }
-    
+
     return -1;
 }
 
 void extract(const char* path, int section, int line) {
+
+    int initial_size = 10;
+    char* buffer = (char*)malloc(initial_size * sizeof(char));
+    if (buffer == NULL) {
+        return;
+    }
     int fd = open(path, O_RDONLY);
 
-    if(fd == -1){
-        perror("ERROR\ninvalid file");
+    if (fd == -1) {
+        printf("ERROR\ninvalid file\n");
+        return;
     }
 
-    if(parse(path) == 0){
+    if (parse(path) == 0) {
         //move to the header size
         lseek(fd, -3, SEEK_END);
         int _header_size = 0;
-        read(fd,&_header_size ,2);
+        read(fd, &_header_size , 2);
 
         //move after the version
         lseek(fd, 0, SEEK_END);
-        lseek(fd, -_header_size+2, SEEK_END);
+        lseek(fd, -_header_size + 2, SEEK_END);
 
         char _sect_nr = 0;
 
@@ -238,28 +262,77 @@ void extract(const char* path, int section, int line) {
 
         int _sect_size = 0;
         int _sect_offset = 0;
-        if(section > _sect_nr || section < 1){
-            perror("ERROR\ninvalid section");
+        if (section > _sect_nr || section < 1) {
+            printf("ERROR\ninvalid section\n");
             return;
         }
 
-        //jump to the section's header 
+        //jump to the section's header
         //in order to find its size
-        for(int i=0;i<section-1;i++){
+        for (int i = 0; i < section - 1; i++) {
             lseek(fd, 16, SEEK_CUR);
         }
 
-        //jump inside the header 
+        //jump inside the header
         //to find section size and offset
         lseek(fd, 8, SEEK_CUR);
         read(fd, &_sect_offset, 4);
         read(fd, &_sect_size, 4);
 
+        //jump to the beginning of the file
+
+        lseek(fd, 0, SEEK_SET);
+
+        //jump to the offset value
+        //of the section
+        lseek(fd, _sect_offset, SEEK_CUR);
+
+        //read one byte at a time and
+        //increment the line
+
+        char byte = 0;
+        int no_of_lines_read = 0;
+        int no_of_bytes_read = 0;
+        while (read(fd, &byte, 1) == 1) {
+            if (byte == '\n') {
+                no_of_lines_read++;
+            }
+            no_of_bytes_read++;
+            if (no_of_bytes_read == _sect_size) {
+                printf("ERROR\ninvalid line\n");
+                return;
+            }
+            if (no_of_lines_read == line - 1)
+                break;
+        }
+
+        //beginning of the line to be read
+
+        int i = 0;
+        //lseek(fd, -1, SEEK_CUR);
+        while (read(fd, &buffer[i], 1) == 1) {
+            if (buffer[i] == '\n' || buffer[i] == '.') {
+                buffer[i] = '\0';
+                break;
+            }
+            i++;
+
+            if (i == initial_size-1) {
+                initial_size *= 2;
+                buffer = realloc(buffer, initial_size);
+                if (buffer == NULL) return;
+            }
+        }
+        close(fd);
+        printf("SUCCESS\n");
+        for (int j = strlen(buffer)-1; j >= 0; j--) {
+            printf("%c", buffer[j]);
+        }
+        printf("\n");
+
     }
-    int a = 0;
-    if(a == 0){
-        a = 1;
-    }
+
+    free(buffer);
 
 }
 
@@ -341,10 +414,12 @@ int main(int argc, char **argv) {
         list_simple(path, _size_greater, name_starts_with);
     }
     else if (_parse == 1) {
+        parse_flag = 0;
         parse(path);
     }
     else if (_extract == 1) {
         if (_line != 0 && _section != 0) {
+            parse_flag = 1;
             extract(path, _section, _line);
         }
     }
