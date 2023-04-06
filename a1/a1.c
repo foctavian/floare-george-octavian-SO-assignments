@@ -9,8 +9,9 @@
 
 #define SIZE 1362
 
+//flag used to to not print
+//the parse function output
 int parse_flag = 0;
-int flag = 0;
 
 int starts_with(char* input, char* prefix) {
 
@@ -165,6 +166,9 @@ int parse(const char* path) {
     lseek(fd, -_header_size, SEEK_END);
     read(fd, &_version, 2);
     if (_version < 97 || _version > 195) {
+        if (parse_flag == 1) {
+            error = 1;
+        }
         if (error == 0) {
             printf("ERROR\nwrong version\n");
             error = 1;
@@ -384,6 +388,7 @@ void findall(const char* path) {
                             read(fd, &temp_size, 4);
                             if (temp_size > SIZE) {
                                 size_flag = 1;
+                                break;
                             }
                         }
 
