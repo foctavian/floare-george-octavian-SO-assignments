@@ -18,7 +18,7 @@ int starts_with(char* input, char* prefix) {
     return strncmp(prefix, input, strlen(prefix));
 }
 
-void list_recursive(const char* path, off_t _size_greater, char* name_starts_with) {
+void list_recursive(const char* path, off_t _size_greater, char* name_starts_with, char first_time) {
     DIR *dir = NULL;
     struct dirent *entry = NULL;
     char fullPath[4096];
@@ -32,27 +32,35 @@ void list_recursive(const char* path, off_t _size_greater, char* name_starts_wit
 
     //regular listing with no additional filters
     if (_size_greater == -1 && name_starts_with == NULL) {
+        if (first_time == 1) {
+            printf("SUCCESS\n");
+        }
         while ((entry = readdir(dir)) != NULL) {
             if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
                 snprintf(fullPath, 4096, "%s/%s", path, entry->d_name);
                 if (lstat(fullPath, &statbuf) == 0) {
+
                     printf("%s\n", fullPath);
                     if (S_ISDIR(statbuf.st_mode)) {
-                        list_recursive(fullPath, _size_greater, name_starts_with);
+                        list_recursive(fullPath, _size_greater, name_starts_with, 0);
                     }
                 }
             }
         }
     }
     else if (_size_greater == -1 && name_starts_with != NULL) {
+        if (first_time == 1) {
+            printf("SUCCESS\n");
+        }
         while ((entry = readdir(dir)) != NULL) {
             if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
                 if (starts_with(entry->d_name, name_starts_with) == 0) {
                     snprintf(fullPath, 4096, "%s/%s", path, entry->d_name);
                     if (lstat(fullPath, &statbuf) == 0) {
+
                         printf("%s\n", fullPath);
                         if (S_ISDIR(statbuf.st_mode)) {
-                            list_recursive(fullPath, _size_greater, name_starts_with);
+                            list_recursive(fullPath, _size_greater, name_starts_with, 0);
                         }
                     }
                 }
@@ -60,16 +68,20 @@ void list_recursive(const char* path, off_t _size_greater, char* name_starts_wit
         }
     }
     else if (_size_greater != -1 && name_starts_with == NULL) {
+        if (first_time == 1) {
+            printf("SUCCESS\n");
+        }
         while ((entry = readdir(dir)) != NULL) {
             if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
                 snprintf(fullPath, 4096, "%s/%s", path, entry->d_name);
                 if (lstat(fullPath, &statbuf) == 0) {
                     if (S_ISREG(statbuf.st_mode) &&
                             statbuf.st_size > _size_greater) {
+
                         printf("%s\n", fullPath);
                     }
                     if (S_ISDIR(statbuf.st_mode)) {
-                        list_recursive(fullPath, _size_greater, name_starts_with);
+                        list_recursive(fullPath, _size_greater, name_starts_with, 0);
                     }
                 }
             }
@@ -88,6 +100,8 @@ void list_simple(const char* path, off_t _size_greater, char* name_starts_with) 
         perror("ERROR\ninvalid directory path\n");
         return;
     }
+    printf("SUCCESS\n");
+
     if (_size_greater == -1 && name_starts_with == NULL) {
         while ((entry = readdir(dir)) != NULL) {
             if (strcmp(entry->d_name, ".") != 0 &&
@@ -367,9 +381,9 @@ void findall(const char* path) {
                         perror("ERROR\ninvalid directory path\n");
                         return;
                     }
-
                     //go through the header and read the size
                     if (parse(fullPath) == 0) {
+
                         char size_flag = 0;
                         //read the nr of sections
                         lseek(fd, 0 , SEEK_END);
@@ -383,10 +397,10 @@ void findall(const char* path) {
                         int sect_nr = 0;
                         read(fd, &sect_nr, 1);
                         int temp_size = 0;
-                        for (int i = 0; i < sect_nr; i++) {
+                        for (int i = 0; i <sect_nr; i++) {
                             lseek(fd, 12, SEEK_CUR);
                             read(fd, &temp_size, 4);
-                            if (temp_size > SIZE) {
+                            if (temp_size >SIZE) {
                                 size_flag = 1;
                                 break;
                             }
@@ -481,11 +495,9 @@ int main(int argc, char **argv) {
     }
 
     if (_list == 1 && _recursive == 1) {
-        printf("SUCCESS\n");
-        list_recursive(path, _size_greater, name_starts_with);
+        list_recursive(path, _size_greater, name_starts_with, 1);
     }
     else if (_list == 1 && _recursive == 0) {
-        printf("SUCCESS\n");
         list_simple(path, _size_greater, name_starts_with);
     }
     else if (_parse == 1) {
