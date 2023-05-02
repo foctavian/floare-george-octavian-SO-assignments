@@ -22,17 +22,31 @@ typedef struct {
     int tid;
 } TH_INFO;
 
-//TODO: t2 trebuie sa inceapa inainte de t3 si sa se termine dupa t3
-
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t condT2 = PTHREAD_COND_INITIALIZER;
-pthread_cond_t condT3 = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_t1 = PTHREAD_COND_INITIALIZER;
 
-
+int t1_flag = 0;
 void* function(void* param) {
     TH_INFO* s = (TH_INFO*)param;
-    info(BEGIN, s->pid, s->tid);
-    info(END, s->pid, s->tid);
+    if (s->tid == 3) {
+        pthread_mutex_lock(&mutex);
+        pthread_cond_wait(&cond, &mutex);
+        info(BEGIN, s->pid, s->tid);
+        info(END, s->pid, s->tid);
+        pthread_cond_signal(&cond_t1);
+        pthread_mutex_unlock(&mutex);
+    } else {
+        info(BEGIN, s->pid, s->tid);
+        if (s->tid == 1) {
+            pthread_cond_signal(&cond);
+            pthread_mutex_lock(&mutex);
+            pthread_cond_wait(&cond_t1, &mutex);
+            pthread_mutex_unlock(&mutex);
+        }
+
+        info(END, s->pid, s->tid);
+    }
     return NULL;
 }
 
@@ -45,6 +59,10 @@ int main() {
         tid[i] = -1;
     }
 
+    /* pthread_t tid_p5[45];
+     for (int i = 0; i < 45; i++) {
+         tid_p5[i] = -1;
+     }*/
     init();
 
     info(BEGIN, 1, 0);
@@ -54,11 +72,7 @@ int main() {
         info(BEGIN, 2, 0);
         //2.3
         TH_INFO th_info[4];
-        sem_t lock;
-        if (sem_init(&lock, 0, 1) != 0) {
-            perror("Could not init the semaphore");
-            return -1;
-        }
+
         for (int i = 0; i < 4; i++) {
             th_info[i].tid = i + 1;
             th_info[i].pid = 2;
@@ -72,10 +86,10 @@ int main() {
         }
 
         for (int i = 0; i < 4; i++) {
-            if(i == 1){
-                pthread_join(tid[1], NULL);
-            }
+            pthread_join(tid[i], NULL);
+
         }
+
 
 
         pid3 = fork();
@@ -98,6 +112,25 @@ int main() {
         pid5 = fork();
         if (pid5 == 0) {
             info(BEGIN, 5, 0);
+
+            /* TH_INFO th_info_p5[45];
+
+             for (int i = 0; i < 45; i++) {
+                 th_info_p5[i].tid = i + 1;
+                 th_info_p5[i].pid = 5;
+             }
+
+             for (int i = 0; i < 45; i++) {
+                 if (pthread_create(&tid_p5[i], NULL, function, &th_info_p5[i]) != 0) {
+                     perror("Error creating thread");
+                     return -1;
+                 }
+             }
+
+             for (int i = 0; i < 45; i++) {
+                pthread_join(tid_p5[i], NULL);
+             }*/
+
             pid6 = fork();
             if (pid6 == 0) {
                 info(BEGIN, 6, 0);
