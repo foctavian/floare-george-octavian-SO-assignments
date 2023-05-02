@@ -13,47 +13,38 @@
 #include <sys/prctl.h>
 #include <signal.h>
 #include <unistd.h>
+#include <semaphore.h>
 #include "a2_helper.h"
-
-int _t1_start_flag = 0;
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t done_condition = PTHREAD_COND_INITIALIZER;
-
 
 
 typedef struct {
     int pid;
     int tid;
-    pthread_mutex_t lock;
 } TH_INFO;
 
-//TODO: double conditional mutex to end t1 after t3
+//TODO: t2 trebuie sa inceapa inainte de t3 si sa se termine dupa t3
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condT2 = PTHREAD_COND_INITIALIZER;
+pthread_cond_t condT3 = PTHREAD_COND_INITIALIZER;
+
 
 void* function(void* param) {
     TH_INFO* s = (TH_INFO*)param;
-    if (s->tid == 3) {
-        pthread_mutex_lock(&lock);
-        while (!_t1_start_flag) {
-            pthread_cond_wait(&done_condition, &lock);
-        }
-        pthread_mutex_unlock(&lock);
-    }
     info(BEGIN, s->pid, s->tid);
-    if (s->tid == 1) {
-        pthread_mutex_lock(&lock);
-        _t1_start_flag = 1;
-        pthread_cond_signal(&done_condition);
-        pthread_mutex_unlock(&lock);
-    }
     info(END, s->pid, s->tid);
     return NULL;
 }
 
+
 int main() {
 
     pid_t pid2, pid3, pid4, pid5, pid6, pid7;
-    pthread_t tid[4] = { -1, -1, -1, -1};
-    pthread_mutex_t lock;
+    pthread_t tid[4];
+    for (int i = 0; i < 4; i++) {
+        tid[i] = -1;
+    }
+
     init();
 
     info(BEGIN, 1, 0);
@@ -63,28 +54,29 @@ int main() {
         info(BEGIN, 2, 0);
         //2.3
         TH_INFO th_info[4];
-        if (pthread_mutex_init(&lock, NULL) != 0) {
+        sem_t lock;
+        if (sem_init(&lock, 0, 1) != 0) {
+            perror("Could not init the semaphore");
             return -1;
         }
         for (int i = 0; i < 4; i++) {
             th_info[i].tid = i + 1;
             th_info[i].pid = 2;
-            th_info[i].lock = lock;
         }
 
-        for (int i = 1; i <= 4; i++) {
-            if (pthread_create(&tid[i - 1], NULL, function, &th_info[i - 1]) != 0) {
+        for (int i = 0; i < 4; i++) {
+            if (pthread_create(&tid[i], NULL, function, &th_info[i]) != 0) {
                 perror("Error creating thread");
                 return -1;
             }
         }
 
         for (int i = 0; i < 4; i++) {
-            if (i == 0) {
-                pthread_join(tid[2], NULL);
+            if(i == 1){
+                pthread_join(tid[1], NULL);
             }
         }
-        pthread_mutex_destroy(&lock);
+
 
         pid3 = fork();
         if (pid3 == 0) {
