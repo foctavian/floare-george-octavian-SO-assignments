@@ -1,0 +1,4 @@
+a2.c: In function 'main':
+a2.c:59:16: warning: assignment to 'pthread_t' {aka 'struct __pthread *'} from 'int' makes pointer from integer without a cast [-Wint-conversion]
+   59 |         tid[i] = -1;
+      |                ^
