@@ -17,16 +17,23 @@
 #include "a2_helper.h"
 
 
+#define MAX_THREADS_PER_CYCLE 5
+
 typedef struct {
     int pid;
     int tid;
+    sem_t *logSem;
 } TH_INFO;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_t1 = PTHREAD_COND_INITIALIZER;
 
-int t1_flag = 0;
+pthread_mutex_t mutex_t13 = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond_t13 = PTHREAD_COND_INITIALIZER;
+
+int nr_of_threads_inside_function = 0;
+char running_t13 = 0;
 void* function(void* param) {
     TH_INFO* s = (TH_INFO*)param;
     if (s->tid == 3) {
@@ -50,21 +57,43 @@ void* function(void* param) {
     return NULL;
 }
 
+void* p5_thread_function(void* param) {
+    TH_INFO* s = (TH_INFO*) param;
+    sem_wait(s->logSem);
+    nr_of_threads_inside_function++;
+    
+    info(BEGIN, s->pid, s->tid);
+    if (s->tid == 13  ) {
+        info(END, s->pid, s->tid);
+    } else {
+        info(END, s->pid, s->tid);
+    }
+    nr_of_threads_inside_function--;
+    sem_post(s->logSem);
+    return NULL;
+}
+
 
 int main() {
 
     pid_t pid2, pid3, pid4, pid5, pid6, pid7;
     pthread_t tid[4];
-    for (int i = 0; i < 4; i++) {
+    sem_t logSem;
+    /*for (int i = 0; i < 4; i++) {
         tid[i] = -1;
-    }
+    }*/
 
-    /* pthread_t tid_p5[45];
-     for (int i = 0; i < 45; i++) {
-         tid_p5[i] = -1;
-     }*/
+    pthread_t tid_p5[45];
+    /*for (int i = 0; i < 45; i++) {
+        tid_p5[i] = -1;
+    }*/
     init();
 
+
+    if (sem_init(&logSem, 0, MAX_THREADS_PER_CYCLE) != 0) {
+        perror("Could not init the semaphore");
+        return -1;
+    }
     info(BEGIN, 1, 0);
     pid2 = fork();
 
@@ -76,6 +105,7 @@ int main() {
         for (int i = 0; i < 4; i++) {
             th_info[i].tid = i + 1;
             th_info[i].pid = 2;
+            th_info[i].logSem = NULL;
         }
 
         for (int i = 0; i < 4; i++) {
@@ -89,8 +119,6 @@ int main() {
             pthread_join(tid[i], NULL);
 
         }
-
-
 
         pid3 = fork();
         if (pid3 == 0) {
@@ -113,23 +141,24 @@ int main() {
         if (pid5 == 0) {
             info(BEGIN, 5, 0);
 
-            /* TH_INFO th_info_p5[45];
+            TH_INFO th_info_p5[45];
 
-             for (int i = 0; i < 45; i++) {
-                 th_info_p5[i].tid = i + 1;
-                 th_info_p5[i].pid = 5;
-             }
+            for (int i = 0; i < 45; i++) {
+                th_info_p5[i].tid = i + 1;
+                th_info_p5[i].pid = 5;
+                th_info_p5[i].logSem = &logSem;
+            }
 
-             for (int i = 0; i < 45; i++) {
-                 if (pthread_create(&tid_p5[i], NULL, function, &th_info_p5[i]) != 0) {
-                     perror("Error creating thread");
-                     return -1;
-                 }
-             }
+            for (int i = 0; i < 45; i++) {
+                if (pthread_create(&tid_p5[i], NULL, p5_thread_function, &th_info_p5[i]) != 0) {
+                    perror("Error creating thread");
+                    return -1;
+                }
+            }
 
-             for (int i = 0; i < 45; i++) {
+            for (int i = 0; i < 45; i++) {
                 pthread_join(tid_p5[i], NULL);
-             }*/
+            }
 
             pid6 = fork();
             if (pid6 == 0) {
@@ -159,6 +188,7 @@ int main() {
     }
 
     info(END, 1, 0);
+    sem_destroy(&logSem);
     exit(0);
     return 0;
 }
