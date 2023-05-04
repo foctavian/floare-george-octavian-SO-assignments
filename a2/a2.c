@@ -17,7 +17,7 @@
 #include "a2_helper.h"
 
 
-#define MAX_THREADS_PER_CYCLE 5
+#define MAX_THREADS_PER_CYCLE 4
 
 typedef struct {
     int pid;
@@ -33,6 +33,7 @@ pthread_mutex_t mutex_t13 = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_t13 = PTHREAD_COND_INITIALIZER;
 
 int nr_of_threads_inside_function = 0;
+int total_nr_of_threads = 0;
 char running_t13 = 0;
 void* function(void* param) {
     TH_INFO* s = (TH_INFO*)param;
@@ -58,7 +59,7 @@ void* function(void* param) {
 }
 
 void* p5_thread_function(void* param) {
-    TH_INFO* s = (TH_INFO*) param;
+     TH_INFO* s = (TH_INFO*) param;
     sem_wait(s->logSem);
     nr_of_threads_inside_function++;
     
@@ -71,29 +72,31 @@ void* p5_thread_function(void* param) {
     nr_of_threads_inside_function--;
     sem_post(s->logSem);
     return NULL;
+
 }
 
+void* p4_thread_function(void* param){
+    TH_INFO* s = (TH_INFO*)param;
+    info(BEGIN, s->pid, s->tid);
+    info(END, s->pid, s->tid);
+
+    return NULL;
+}
 
 int main() {
 
     pid_t pid2, pid3, pid4, pid5, pid6, pid7;
     pthread_t tid[4];
     sem_t logSem;
-    /*for (int i = 0; i < 4; i++) {
-        tid[i] = -1;
-    }*/
-
     pthread_t tid_p5[45];
-    /*for (int i = 0; i < 45; i++) {
-        tid_p5[i] = -1;
-    }*/
+    pthread_t tid_p4[3];
     init();
-
 
     if (sem_init(&logSem, 0, MAX_THREADS_PER_CYCLE) != 0) {
         perror("Could not init the semaphore");
         return -1;
     }
+
     info(BEGIN, 1, 0);
     pid2 = fork();
 
@@ -131,6 +134,23 @@ int main() {
         pid4 = fork();
         if (pid4 == 0) {
             info(BEGIN, 4, 0);
+            TH_INFO th_info_p4[3];
+            for (int i = 0; i < 4; i++) {
+                th_info_p4[i].tid = i + 1;
+                th_info_p4[i].pid = 4;
+                th_info_p4[i].logSem = &logSem;
+            }
+
+            for (int i = 0; i < 4; i++) {
+                if (pthread_create(&tid_p4[i], NULL, p4_thread_function, &th_info_p4[i]) != 0) {
+                    perror("Error creating thread");
+                    return -1;
+                }
+            }
+
+            for (int i = 0; i < 4; i++) {
+                pthread_join(tid_p4[i], NULL);
+            }
             info(END, 4, 0);
             exit(0);
         }
@@ -189,6 +209,8 @@ int main() {
 
     info(END, 1, 0);
     sem_destroy(&logSem);
+    pthread_mutex_destroy(&mutex_t13);
+    pthread_mutex_destroy(&mutex);
     exit(0);
     return 0;
 }
