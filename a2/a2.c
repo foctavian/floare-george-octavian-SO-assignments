@@ -17,7 +17,7 @@
 #include "a2_helper.h"
 
 
-#define MAX_THREADS_PER_CYCLE 4
+#define MAX_THREADS_PER_CYCLE 5
 
 typedef struct {
     int pid;
@@ -30,11 +30,13 @@ pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_t1 = PTHREAD_COND_INITIALIZER;
 
 pthread_mutex_t mutex_t13 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t additional_mutex_t13 = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_t13 = PTHREAD_COND_INITIALIZER;
 
 int nr_of_threads_inside_function = 0;
 int total_nr_of_threads = 0;
 char running_t13 = 0;
+char finished_t13 = 0;
 void* function(void* param) {
     TH_INFO* s = (TH_INFO*)param;
     if (s->tid == 3) {
@@ -59,23 +61,49 @@ void* function(void* param) {
 }
 
 void* p5_thread_function(void* param) {
-     TH_INFO* s = (TH_INFO*) param;
+    TH_INFO* s = (TH_INFO*) param;
     sem_wait(s->logSem);
-    nr_of_threads_inside_function++;
-    
+
     info(BEGIN, s->pid, s->tid);
-    if (s->tid == 13  ) {
-        info(END, s->pid, s->tid);
-    } else {
+
+    pthread_mutex_lock(&mutex_t13);
+    nr_of_threads_inside_function++;
+    pthread_mutex_unlock(&mutex_t13);
+
+    if (s->tid == 13) {
+        running_t13 = 1;
+
+        for (;;) {
+            if (nr_of_threads_inside_function == MAX_THREADS_PER_CYCLE)
+                break;
+        }
+        info(END, s->pid, 13);
+        nr_of_threads_inside_function--;
+        running_t13 = 0;
+        finished_t13  = 1;
+    }
+    else {
+        pthread_mutex_lock(&additional_mutex_t13);
+        total_nr_of_threads++;
+
+        if (total_nr_of_threads == 40 && finished_t13 == 0) {
+            running_t13 = 1;
+        }
+
+        for (;;) {
+            if (running_t13 != 1)
+                break;
+        }
+        nr_of_threads_inside_function--;
+        pthread_mutex_unlock(&additional_mutex_t13);
+
         info(END, s->pid, s->tid);
     }
-    nr_of_threads_inside_function--;
     sem_post(s->logSem);
     return NULL;
-
 }
 
-void* p4_thread_function(void* param){
+void* p4_thread_function(void* param) {
     TH_INFO* s = (TH_INFO*)param;
     info(BEGIN, s->pid, s->tid);
     info(END, s->pid, s->tid);
@@ -211,6 +239,7 @@ int main() {
     sem_destroy(&logSem);
     pthread_mutex_destroy(&mutex_t13);
     pthread_mutex_destroy(&mutex);
+    pthread_mutex_destroy(&additional_mutex_t13);
     exit(0);
     return 0;
 }
