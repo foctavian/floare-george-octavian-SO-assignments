@@ -1,0 +1,10 @@
+a3.c: In function 'main':
+a3.c:27:7: error: array size missing in 'file_name'
+   27 |  char file_name[];
+      |       ^~~~~~~~~
+a3.c:143:13: error: assignment to expression with array type
+  143 |   file_name = malloc(file_size*sizeof(char));
+      |             ^
+a3.c:27:7: warning: variable 'file_name' set but not used [-Wunused-but-set-variable]
+   27 |  char file_name[];
+      |       ^~~~~~~~~
