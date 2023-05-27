@@ -38,10 +38,10 @@ int main(int argc, char** argv) {
 	off_t file_size = 0;
 	unsigned int size_sh = 0;
 	void* shared_mem ;
-	char* shared_file = NULL;
+	void* shared_file = NULL;
 	unsigned int offset, val;
 	char *file_name;
-
+	unsigned int file_offset, no_of_bytes;
 	mkfifo(PIPE_write, 0600);
 
 	fd_read = open(PIPE_read, O_RDONLY);
@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
 		for (int i = 0; i < size; i++) {
 			read(fd_read, &request[i], sizeof(char));
 		}
-		//request[size] = '\0';
+		request[size] = '\0';
 		if (strncmp(request, "VARIANT", size) == 0) {
 			unsigned int len = strlen(variant);
 			write(fd_write, &len, 1);
@@ -100,6 +100,7 @@ int main(int argc, char** argv) {
 			shared_mem = NULL;
 			unlink(PIPE_write);
 			shm_unlink(ShM);
+			free(file_name);
 			return 0;
 		}
 
@@ -170,8 +171,8 @@ int main(int argc, char** argv) {
 			unsigned int file_name_size = 0;
 			read(fd_read, &file_name_size, 1);
 			file_name = malloc((file_name_size) * sizeof(char));
-
-			for(int i=0;i<file_name_size;i++){
+			int fd = -1;
+			for (int i = 0; i < file_name_size; i++) {
 				read(fd_read, &file_name[i], 1);
 			}
 			file_name[file_name_size] = '\0';
@@ -181,17 +182,16 @@ int main(int argc, char** argv) {
 			        strcmp(file_name, PIPE_write) != 0 &&
 			        strcmp(file_name, PIPE_read) != 0) {
 
-				int fd = open(file_name, O_RDONLY);
+				fd = open(file_name, O_RDONLY);
 
 				if (fd == -1) {
 					sendString(error);
 				}
 				else {
 					file_size = lseek(fd, 0, SEEK_END);
-					//lseek(fd, 0, SEEK_SET);
+					lseek(fd, 0, SEEK_SET);
 					ftruncate(fd, file_size);
-					shared_file = ( char*)mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
-					printf("a");
+					shared_file = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd, 0);
 
 					if (shared_file == (void*) - 1) {
 						sendString(error);
@@ -199,18 +199,30 @@ int main(int argc, char** argv) {
 					} else {
 						sendString(success);
 					}
-					close(fd);
 				}
 			} else {
 				sendString(error);
 			}
-			free(file_name);
+			close(fd);
+
 		}
-		free(request);
+
+		if (strncmp(request, "READ_FROM_FILE_OFFSET", size) == 0) {
+			read(fd_read, &file_offset, sizeof(unsigned int));
+			read(fd_read, &no_of_bytes, sizeof(unsigned int));
+
+			sendString(request);
+			if (shared_file != (void*) - 1 && shared_mem != (void*) - 1) {
+				if (file_offset + no_of_bytes < file_size ) {
+					memmove(shared_mem, shared_file + file_offset, no_of_bytes);
+					sendString(success);
+				} else {
+					sendString(error);
+				}
+			} else {
+				sendString(error);
+			}
+		}
 	}
-
-
-
-
 	return 0;
 }
