@@ -11,11 +11,17 @@
 #define PIPE_write "RESP_PIPE_55635"
 #define PIPE_read "REQ_PIPE_55635"
 #define ShSIZE 1708215
+#define MEM_ALLIGNMENT 4096
 #define ShM "/55Meom"
 
 int fd_write = -1;
 int fd_read = -1;
-
+int _version = 0;
+char _magic = 0;
+char _sect_nr = 0;
+int _sect_offset = 0;
+int _sect_size = 0;
+short _header_size = 0;
 
 void sendString(char* string) {
 	unsigned int len = strlen(string);
@@ -30,7 +36,6 @@ int main(int argc, char** argv) {
 
 	unsigned int version = 55635;
 	char variant[] = "VARIANT";
-	char write_to_shm[] = "WRITE_TO_SHM";
 	char value[] = "VALUE";
 	char success[] = "SUCCESS";
 	char error[] = "ERROR";
@@ -41,7 +46,7 @@ int main(int argc, char** argv) {
 	void* shared_file = NULL;
 	unsigned int offset, val;
 	char *file_name;
-	unsigned int file_offset, no_of_bytes;
+	unsigned int file_offset, no_of_bytes, section_no, logical_offset;
 	mkfifo(PIPE_write, 0600);
 
 	fd_read = open(PIPE_read, O_RDONLY);
@@ -56,8 +61,6 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-
-	//"BEGIN" test
 	char begin[] = "BEGIN";
 	unsigned int  size = strlen(begin);
 	write(fd_write, &size, sizeof(char));
@@ -76,19 +79,12 @@ int main(int argc, char** argv) {
 		}
 		request[size] = '\0';
 		if (strncmp(request, "VARIANT", size) == 0) {
-			unsigned int len = strlen(variant);
-			write(fd_write, &len, 1);
-			for (int i = 0; i < strlen(variant); i++) {
-				write(fd_write, &variant[i], sizeof(char));
-			}
+			sendString(variant);
 
 			write(fd_write, &version, sizeof(version));
 
-			len = strlen(value);
-			write(fd_write, &len, 1);
-			for (int i = 0; i < strlen(variant); i++) {
-				write(fd_write, &value[i], sizeof(char));
-			}
+
+			sendString(value);
 		}
 
 		if (strncmp(request, "EXIT", size) == 0) {
@@ -108,34 +104,22 @@ int main(int argc, char** argv) {
 			read(fd_read, &size_sh, sizeof(size_sh));
 
 			int fd = shm_open(ShM, O_CREAT | O_RDWR, 0664);
-			write(fd_write, &size, 1);
-			for (int i = 0; i < size; i++) {
-				write(fd_write, &request[i], sizeof(char));
-			}
+
+			sendString("CREATE_SHM");
 
 			if (fd < 0) {
-				unsigned int len = strlen(error);
-				write(fd_write, &len, 1);
-				for (int i = 0; i < len; i++) {
-					write(fd_write, &error[i], sizeof(char));
-				}
+				sendString(error);
 			}
 			else {
 				ftruncate(fd, size_sh);
 				shared_mem = mmap(0, size_sh, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 				if (shared_mem == MAP_FAILED) {
-					unsigned int len = strlen(error);
-					write(fd_write, &len, 1);
-					for (int i = 0; i < len; i++) {
-						write(fd_write, &error[i], sizeof(char));
-					}
+					sendString(error);
+
 				}
 				else {
-					unsigned int len = strlen(success);
-					write(fd_write, &len, 1);
-					for (int i = 0; i < len; i++) {
-						write(fd_write, &success[i], sizeof(char));
-					}
+					sendString(success);
+
 				}
 			}
 		}
@@ -143,27 +127,14 @@ int main(int argc, char** argv) {
 		if (strncmp(request, "WRITE_TO_SHM", size) == 0) {
 			read(fd_read, &offset, sizeof(offset));
 			read(fd_read, &val, sizeof(val));
-			write(fd_write, &size, 1);
-			unsigned int len = 0;
-			for (int i = 0; i < size; i++) {
-				write(fd_write, &write_to_shm[i], sizeof(char));
-			}
+			sendString("WRITE_TO_SHM");
 
 			if (offset < 0 || offset + sizeof(val) > ShSIZE) {
-				len = strlen(error);
-				write(fd_write, &len, 1);
-				for (int i = 0; i < len; i++) {
-					write(fd_write, &error[i], 1);
-				}
+				sendString(error);
 			} else {
 
 				*(unsigned int*)( shared_mem + offset) = val;
-				len = strlen(success);
-				write(fd_write, &len, 1);
-				for (int i = 0; i < len; i++) {
-					write(fd_write, &success[i], 1);
-
-				}
+				sendString(success);
 			}
 		}
 
@@ -190,7 +161,6 @@ int main(int argc, char** argv) {
 				else {
 					file_size = lseek(fd, 0, SEEK_END);
 					lseek(fd, 0, SEEK_SET);
-					ftruncate(fd, file_size);
 					shared_file = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd, 0);
 
 					if (shared_file == (void*) - 1) {
@@ -222,6 +192,31 @@ int main(int argc, char** argv) {
 			} else {
 				sendString(error);
 			}
+		}
+
+		if (strncmp(request, "READ_FRON_FILE_SECTION", size) == 0) {
+			read(fd_read, &section_no, sizeof(unsigned int));
+			read(fd_read, &file_offset, sizeof(unsigned int));
+			read(fd_read, &no_of_bytes, sizeof(unsigned int));
+
+			sendString(request);
+			if (shared_file != (void*) - 1 && shared_mem != (void*) - 1) {
+				if (section_no  <= _sect_nr ) {
+					memmove(shared_mem, shared_file + _sect_offset, no_of_bytes);
+					sendString(success);
+				} else {
+					sendString(error);
+				}
+			} else {
+				sendString(error);
+			}
+		}
+
+		if (strncmp(request, "READ_FROM_LOGICAL_SPACE_OFFSET", size) == 0) {
+			read(fd_read, &logical_offset, sizeof(unsigned int));
+			read(fd_read, &no_of_bytes, sizeof(unsigned int));
+
+			sendString(request);
 		}
 	}
 	return 0;
