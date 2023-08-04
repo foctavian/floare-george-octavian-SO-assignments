@@ -1,0 +1,118 @@
+[1;35mTest 1...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 2...[0m
+	Checking process hierarchy...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads from the same process...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads barrier...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads from different processes...
+		thread T2.4 starts before T4.4 ended
+		[1;33mPARTIAL CORRECT[0m [2 point(s)]
+[1;35mTest 3...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 4...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 5...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+Total score: 17 / 100
+Assignment grade: 17.00 / 100
+[1;35mTest 1...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 2...[0m
+	Checking process hierarchy...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads from the same process...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads barrier...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads from different processes...
+		thread T2.4 starts before T4.4 ended
+		[1;33mPARTIAL CORRECT[0m [2 point(s)]
+[1;35mTest 3...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 4...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 5...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+Total score: 17 / 100
+Assignment grade: 17.00 / 100
+[1;35mTest 1...[0m
+	Checking process hierarchy...
+		missing main thread for processes: 6
+		[1;31mFAIL           [0m [0 point(s)]
+	Checking threads from the same process...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads barrier...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads from different processes...
+		thread T2.4 starts before T4.4 ended
+		[1;33mPARTIAL CORRECT[0m [2 point(s)]
+[1;35mTest 2...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 3...[0m
+	Checking process hierarchy...
+		missing END for main thread of process 7
+		[1;31mFAIL           [0m [0 point(s)]
+	Checking threads from the same process...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads barrier...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads from different processes...
+		thread T2.4 starts before T4.4 ended
+		[1;33mPARTIAL CORRECT[0m [2 point(s)]
+[1;35mTest 4...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 5...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+Total score: 24 / 100
+Assignment grade: 24.00 / 100
+[1;35mTest 1...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 2...[0m
+	Checking process hierarchy...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads from the same process...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads barrier...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads from different processes...
+		thread T2.4 starts before T4.4 ended
+		[1;33mPARTIAL CORRECT[0m [2 point(s)]
+[1;35mTest 3...[0m
+	Checking process hierarchy...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads from the same process...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads barrier...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads from different processes...
+		thread T2.4 starts before T4.4 ended
+		[1;33mPARTIAL CORRECT[0m [2 point(s)]
+[1;35mTest 4...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 5...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+Total score: 34 / 100
+Assignment grade: 34.00 / 100
+[1;35mTest 1...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 2...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 3...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+[1;35mTest 4...[0m
+	Checking process hierarchy...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads from the same process...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads barrier...
+		[1;32mCORRECT        [0m [5 point(s)]
+	Checking threads from different processes...
+		thread T2.4 starts before T4.4 ended
+		[1;33mPARTIAL CORRECT[0m [2 point(s)]
+[1;35mTest 5...[0m
+	[1;31mTIME LIMIT EXCEEDED[0m
+Total score: 17 / 100
+Assignment grade: 17.00 / 100
